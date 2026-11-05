@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SMARTPACK | AI Backpack</title>
+
+    <link rel="stylesheet" href="BP.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- SIDEBAR -->
+
+        <aside class="sidebar">
+
+            <div class="logo">
+                <span>🕷️</span>
+                SMARTPACK
+            </div>
+
+            <p class="menu-title">MENU</p>
+
+            <a href="#" class="active">🏠 Dashboard</a>
+            <a href="#register">📡 Register Items</a>
+            <a href="#items">🎒 My Backpack</a>
+            <a href="#activity">📋 Activity Log</a>
+
+            <div class="sidebar-bottom">
+                <p>SMART BACKPACK</p>
+                <small>Intelligent Item Detection System</small>
+            </div>
+
+        </aside>
+
+
+        <!-- MAIN CONTENT -->
+
+        <main class="main">
+
+            <header>
+
+                <div>
+                    <h1>Smart Dashboard</h1>
+                    <p>Welcome to your intelligent backpack system.</p>
+                </div>
+
+                <div class="status" id="connectionStatus">
+                    <span class="dot"></span>
+                    Scanner Disconnected
+                </div>
+
+            </header>
+
+
+            <!-- WELCOME SECTION -->
+
+            <section class="welcome">
+
+                <div>
+                    <h2>Never Forget Your Essentials Again!</h2>
+
+                    <p>
+                        Manage your backpack items, scan RFID tags
+                        and make sure everything is ready before leaving.
+                    </p>
+
+                    <button onclick="connectArduino()">
+                        CONNECT RFID SCANNER
+                    </button>
+                </div>
+
+                <div class="bag-icon">
+                    🎒
+                </div>
+
+            </section>
+
+
+            <!-- STATISTICS -->
+
+            <section class="stats">
+
+                <div class="stat-card">
+                    <h3>Registered Items</h3>
+                    <h1 id="totalItems">0</h1>
+                    <p>Items registered</p>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Items Detected</h3>
+                    <h1 id="detectedItems">0</h1>
+                    <p>Items currently detected</p>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Missing Items</h3>
+                    <h1 id="missingItems">0</h1>
+                    <p>Items not detected</p>
+                </div>
+
+            </section>
+
+
+            <!-- REGISTER SECTION -->
+
+            <section class="content-grid" id="register">
+
+                <div class="card">
+
+                    <h2>📡 Register New Item</h2>
+
+                    <p>Scan your RFID tag to register a new item.</p>
+
+                    <div class="scanner">
+
+                        <div class="scanner-icon">📶</div>
+
+                        <h3>Ready to Scan</h3>
+
+                        <p id="scanMessage">
+                            Connect your RFID scanner first.
+                        </p>
+
+                    </div>
+
+                    <button class="primary-btn"
+                        onclick="sendCommand('r')">
+                        SCAN & REGISTER
+                    </button>
+
+                </div>
+
+
+                <!-- CHECK ITEMS -->
+
+                <div class="card">
+
+                    <h2>🎒 Check Backpack</h2>
+
+                    <p>Check whether all your registered items are present.</p>
+
+                    <div class="check-box">
+
+                        <div class="check-icon">✓</div>
+
+                        <h3 id="checkTitle">Backpack Status</h3>
+
+                        <p id="checkMessage">
+                            Press the button to check your items.
+                        </p>
+
+                    </div>
+
+                    <button class="primary-btn"
+                        onclick="sendCommand('c')">
+                        CHECK MY ITEMS
+                    </button>
+
+                </div>
+
+                <!-- CHECK RFID TAG ID -->
+                <div class="card">
+
+                    <h2>🏷️ Check RFID Tag ID</h2>
+
+                    <p>Scan any RFID card or tag to view its UID and registration status.</p>
+
+                    <div class="check-box">
+                        <div class="check-icon">🔎</div>
+                        <h3 id="tagCheckTitle">Tag ID Checker</h3>
+                        <p id="tagIdResult">Press the button and scan an RFID tag.</p>
+                        <p id="tagNameResult"></p>
+                        <p id="tagStatusResult"></p>
+                    </div>
+
+                    <button class="primary-btn" onclick="sendCommand('t')">
+                        CHECK TAG ID
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- REGISTERED ITEMS -->
+
+            <section class="card items-section" id="items">
+
+                <div class="section-heading">
+
+                    <div>
+                        <h2>🎒 Registered Items</h2>
+                        <p>Your backpack's registered item list.</p>
+                    </div>
+
+                    <button class="remove-btn"
+                        onclick="removeAll()">
+                        🗑 REMOVE ALL
+                    </button>
+
+                </div>
+
+                <div class="items-list" id="itemsList">
+
+                    <div class="empty">
+                        No items registered yet.
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- ACTIVITY LOG -->
+
+            <section class="card activity" id="activity">
+
+                <h2>📋 Recent Activity</h2>
+
+                <div id="activityLog">
+
+                    <p>System initialized successfully.</p>
+
+                </div>
+
+            </section>
+
+
+            <footer>
+                SMARTPACK © 2026 | Smart AI Backpack Project
+            </footer>
+
+        </main>
+
+    </div>
+
+
+    <script>
+
+        let port;
+        let writer;
+        let reader;
+
+        let registeredItems = [];
+
+
+        // CONNECT ARDUINO
+
+        async function connectArduino() {
+
+            try {
+
+                port = await navigator.serial.requestPort();
+
+                await port.open({ baudRate: 9600 });
+
+                writer = port.writable.getWriter();
+
+                document.getElementById("connectionStatus").innerHTML =
+                    '<span class="dot"></span> Scanner Connected';
+
+                document.getElementById("scanMessage").innerText =
+                    "Scanner connected. Ready to scan.";
+
+                addActivity("RFID Scanner Connected");
+
+                readArduino();
+
+            }
+
+            catch (error) {
+
+                alert("Unable to connect Arduino. Check your connection.");
+
+            }
+
+        }
+
+
+        // SEND COMMAND TO ARDUINO
+
+        async function sendCommand(command) {
+
+            if (!writer) {
+
+                alert("Please connect your RFID scanner first.");
+
+                return;
+
+            }
+
+            const data = new TextEncoder().encode(command + "\n");
+
+            await writer.write(data);
+
+            if (command === "r") {
+
+                document.getElementById("scanMessage").innerText =
+                    "Scan your RFID tag to register.";
+
+                addActivity("Registration scanning started");
+
+            }
+
+            if (command === "c") {
+
+                document.getElementById("checkMessage").innerText =
+                    "Checking your backpack...";
+
+                addActivity("Backpack checking started");
+
+            }
+
+        }
+
+
+        // READ ARDUINO RESPONSE
+
+        async function readArduino() {
+
+            const decoder = new TextDecoder();
+
+            let buffer = "";
+
+            while (port && port.readable) {
+
+                reader = port.readable.getReader();
+
+                try {
+
+                    while (true) {
+
+                        const { value, done } = await reader.read();
+
+                        if (done) break;
+
+                        buffer += decoder.decode(value);
+
+                        let lines = buffer.split("\n");
+
+                        buffer = lines.pop();
+
+                        lines.forEach(line => {
+
+                            handleArduinoData(line.trim());
+
+                        });
+
+                    }
+
+                }
+
+                catch (error) {
+
+                    console.log(error);
+
+                }
+
+                finally {
+
+                    reader.releaseLock();
+
+                }
+
+            }
+
+        }
+
+
+        // PROCESS ARDUINO DATA
+
+        function handleArduinoData(data) {
+
+            if (!data) return;
+
+            data = data.trim();
+            console.log("Arduino:", data);
+            addActivity(data);
+
+            // 1) New Arduino format: REGISTERED:WATER BOTTLE
+            // 2) Older Arduino format: WATER BOTTLE REGISTERED SUCCESSFULLY!
+            let registeredName = "";
+
+            if (data.startsWith("REGISTERED:")) {
+                registeredName = data.substring("REGISTERED:".length).trim();
+            } else if (data.toUpperCase().endsWith("REGISTERED SUCCESSFULLY!")) {
+                registeredName = data.replace(/REGISTERED SUCCESSFULLY!$/i, "").trim();
+            }
+
+            if (registeredName) {
+                if (!registeredItems.includes(registeredName)) {
+                    registeredItems.push(registeredName);
+                    updateItems();
+                    document.getElementById("scanMessage").innerText =
+                        registeredName + " registered successfully!";
+                } else {
+                    document.getElementById("scanMessage").innerText =
+                        registeredName + " is already registered.";
+                }
+                return;
+            }
+
+            // Registered list returned by Arduino after command c
+            // Example: Item 1: WATER BOTTLE
+            if (data.startsWith("Item ") && data.includes(":")) {
+                const itemName = data.substring(data.indexOf(":") + 1).trim();
+                if (itemName && !registeredItems.includes(itemName)) {
+                    registeredItems.push(itemName);
+                    updateItems();
+                }
+                return;
+            }
+
+            if (data.startsWith("ITEM:")) {
+                document.getElementById("checkMessage").innerText =
+                    data.substring(5).trim() + " detected.";
+                return;
+            }
+
+            if (data.startsWith("MISSING:")) {
+                document.getElementById("checkTitle").innerText = "Missing Items!";
+                document.getElementById("checkMessage").innerText =
+                    data.substring(8).trim() + " is missing!";
+                return;
+            }
+
+            if (data === "ALL_PRESENT") {
+                document.getElementById("checkTitle").innerText = "Everything Ready!";
+                document.getElementById("checkMessage").innerText =
+                    "All registered items are present.";
+                return;
+            }
+
+            if (data.startsWith("TOTAL:")) {
+                const total = parseInt(data.substring(6).trim(), 10);
+                if (!Number.isNaN(total)) {
+                    document.getElementById("totalItems").innerText = total;
+                }
+                return;
+            }
+
+            if (data === "CLEARED" || data === "All Items Removed!") {
+                registeredItems = [];
+                updateItems();
+                document.getElementById("detectedItems").innerText = "0";
+                document.getElementById("missingItems").innerText = "0";
+                document.getElementById("scanMessage").innerText =
+                    "All registered items removed.";
+                addActivity("All registered items removed");
+                return;
+            }
+
+            if (data === "No Items Registered.") {
+                registeredItems = [];
+                updateItems();
+                return;
+            }
+
+            // RFID tag ID checker responses
+            if (data.startsWith("Tag ID:") || data.startsWith("TAG ID:")) {
+                document.getElementById("tagCheckTitle").innerText = "Tag Scanned";
+                document.getElementById("tagIdResult").innerText =
+                    "TAG ID: " + data.substring(data.indexOf(":") + 1).trim();
+                return;
+            }
+
+            if (data.startsWith("ITEM NAME:")) {
+                document.getElementById("tagNameResult").innerText = data;
+                return;
+            }
+
+            if (data.startsWith("STATUS:")) {
+                document.getElementById("tagStatusResult").innerText = data;
+                return;
+            }
+
+            if (data.startsWith("REGISTERED NAME:")) {
+                document.getElementById("tagNameResult").innerText = data;
+                return;
+            }
+
+            document.getElementById("scanMessage").innerText = data;
+        }
+
+        // UPDATE ITEM LIST
+
+        function updateItems() {
+
+            const list = document.getElementById("itemsList");
+
+            list.innerHTML = "";
+
+            registeredItems.forEach((item, index) => {
+                const row = document.createElement("div");
+                row.className = "item";
+
+                const name = document.createElement("span");
+                name.textContent = "📦 " + item;
+
+                const status = document.createElement("span");
+                status.className = "registered";
+                status.textContent = "REGISTERED";
+
+                row.appendChild(name);
+                row.appendChild(status);
+                list.appendChild(row);
+            });
+
+            if (registeredItems.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent = "No items registered yet.";
+                list.appendChild(empty);
+            }
+
+            document.getElementById("totalItems").innerText =
+                registeredItems.length;
+
+        }
+
+
+        // REMOVE ALL ITEMS
+
+        async function removeAll() {
+
+            if (!confirm("Are you sure you want to remove all items?")) {
+                return;
+            }
+
+            if (!writer) {
+
+                alert("Connect Arduino first.");
+
+                return;
+
+            }
+
+            await sendCommand("x");
+
+            addActivity("Remove all command sent");
+
+        }
+
+
+        // ACTIVITY LOG
+
+        function addActivity(message) {
+
+            const log = document.getElementById("activityLog");
+
+            const entry = document.createElement("p");
+
+            entry.innerText = "• " + message;
+
+            log.prepend(entry);
+
+        }
+
+    </script>
+
+</body>
+
+</html>
